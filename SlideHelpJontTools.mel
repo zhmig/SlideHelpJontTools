@@ -1,0 +1,214 @@
+global proc helpjointWin(){
+	if(`window -q -ex "helpJointWin"`)deleteUI("helpJointWin");
+	    window -t "Create HelpJoint Tools" -wh 450 208 "helpJointWin";
+	formLayout "main_formLay";
+	textFieldButtonGrp -h 30 -cw 1 70 -adj 2 -l "Select Joint : "
+	                    -bl "  <<<  " -bc "setJoint();" "setjointBtnGrp";
+	separator -st "in" "separator1";
+	textFieldGrp -w 80 -cw 1 70 -adj 2 -l "Prefix Name : " "Prefix_tx";
+	textFieldGrp -w 80 -cw 1 70 -adj 2 -l "Suffix Name : " "Suffix_tx";
+	button -h 30 -bgc 0.0 0.48 0.53 -l "Create Help Joint !!!" -c "create_jnt_grp();" "chj_Btn";
+	text -l "None" "maingrp_tx";
+	    popupMenu -p "maingrp_tx";
+	        menuItem -l "Set Group Name" -c "set_grp();" -i "QR_settings.png";
+	separator "sep2";
+	separator "sep3";
+	checkBoxGrp -cw 1 70 -ncb 4 -l "Con# Axial : " -l1 "X" -l2 "Y" -l3 "Z" -l4 "-" "axialCBoxGrp";
+	button -h 30 -bgc 0.0 0.53 0.5 -l "Apply Corrective" -c "apply_con();" "apply_btn";
+	formLayout -e -af "setjointBtnGrp" "top" 5 -af "setjointBtnGrp" "left" 5
+	            -af "setjointBtnGrp" "right" 5 -af "separator1" "left" 5
+	            -af "separator1" "right" 5 -af "Prefix_tx" "left" 5
+	            -af "Suffix_tx" "right" 5 -af "chj_Btn" "left" 5
+	            -af "chj_Btn" "right" 5 -af "maingrp_tx" "left" 5
+	            -af "maingrp_tx" "right" 5 -af "sep2" "left" 5
+	            -af "sep2" "right" 5 -af "sep3" "left" 5
+	            -af "sep3" "right" 5 -af "axialCBoxGrp" "left" 5
+	            -af "axialCBoxGrp" "right" 5 -af "apply_btn" "left" 5
+	            -af "apply_btn" "right" 5 -af "apply_btn" "bottom" 5
+	            -ac "separator1" "top" 5 "setjointBtnGrp" -ac "Prefix_tx" "top" 5 "separator1"
+	            -ac "Suffix_tx" "top" 5 "separator1" -ac "chj_Btn" "top" 5 "Prefix_tx"
+	            -ac "maingrp_tx" "top" 5 "chj_Btn" -ac "sep2" "top" 5 "maingrp_tx"
+	            -ac "sep3" "top" 2 "sep2" -ac "axialCBoxGrp" "top" 5 "sep3"
+	            -ac "apply_btn" "top" 5 "axialCBoxGrp" -ap "Prefix_tx" "right" 2 50
+	            -ap "Suffix_tx" "left" 2 50 "main_formLay";
+	showWindow "helpJointWin";
+}
+
+global proc setJoint(){
+    string $setjoint;
+    string $sel_jnts[] = `ls -sl -type "joint"`;
+    if(size($sel_jnts) == 1){
+        $setjoint = `textFieldButtonGrp -e -tx $sel_jnts[0] "setjointBtnGrp"`;
+        print $sel_jnts[0];
+    }
+    else{
+        confirmDialog -t "注意" -m "超过 1 节骨骼 或 不是骨骼!!!"
+            -icn "warning" -b "确认" -cb "确认" -ds "确认";       
+    }
+}
+
+global proc create_jnt_grp(){
+    string $prefix = "";
+    string $suffix = "";
+    string $jnt = `textFieldButtonGrp -q -tx "setjointBtnGrp"`;
+    if (`textFieldGrp -q -tx "Prefix_tx"` != ""){
+        $prefix = `textFieldGrp -q -tx "Prefix_tx"`;
+    }
+    if (`textFieldGrp -q -tx "Suffix_tx"` != ""){
+        $suffix = `textFieldGrp -q -tx "Suffix_tx"`;
+    }
+    string $main_grp = `group -em -n ($prefix + $jnt + "_MainSlide_Grp" + $suffix)`;
+    string $loc_grp = `group -em -n ($prefix + $jnt + "_SlideLoc_Grp" + $suffix) -p $main_grp`;
+    string $slide_grp_a = `group -em -n ($prefix + $jnt + "_Slide_Grp" + $suffix) -p $main_grp`;
+    string $slide_grp_b = `group -em -n ($prefix + $jnt + "_Slide_Grp1" + $suffix) -p $slide_grp_a`;
+    string $slide_oft = `group -em -n ($prefix + $jnt + "_Slide_Oft" + $suffix) -p $slide_grp_b`;
+    string $slide_grp_c = `group -em -n ($prefix + $jnt + "_Slide_Grp2" + $suffix) -p $slide_oft`;
+    string $slide_grp_d = `group -em -n ($prefix + $jnt + "_Slide_Grp3" + $suffix) -p $slide_grp_c`;
+    string $slide_con = `curve -d 1 -p 0 1 0 -p -1 0 0 -p 0 -1 0
+                                -p 1 0 0 -p 0 1 0 -p 0 0 1 -p 0 -1 0
+                                -p 0 0 -1 -p 0 1 0 -p 0 0 -1 -p -1 0 0
+                                -p 0 0 1 -p 1 0 0 -p 0 0 -1 -k 0 -k 1
+                                -k 2 -k 3 -k 4 -k 5 -k 6 -k 7
+                                -k 8 -k 9 -k 10 -k 11 -k 12 -k 13
+                                -n ($jnt + "_Slide_Con" + $suffix)`;
+    addAttr -ln "slide"  -at double  -dv 1 $slide_con;
+    setAttr -e-keyable true ($slide_con + ".slide");
+    select -cl;
+    string $help_jnt = `joint -n ($prefix + $jnt + "_Slide_Jnt" + $suffix)`;
+    parent $slide_con $slide_grp_d ;
+    parent $help_jnt $slide_con;
+   
+    string $main_parents[] = `parentConstraint -w 1 $jnt $main_grp`;
+    delete $main_parents[0];
+    string $up_levels[] = `listRelatives -p $jnt`;
+    string $main_ori[] = `orientConstraint -w 1 $jnt $up_levels[0] $main_grp`;
+    delete $main_ori[0];
+   
+    text -e -l $main_grp "maingrp_tx";       
+}
+
+global proc set_grp(){
+    string $sels[] = `ls -sl -as`;
+    string $rezs[] = `listRelatives -s $sels[0]`;
+    if (size($rezs) == 0){
+        text -e -l $sels[0] "maingrp_tx"; 
+    }
+}
+
+global proc apply_con(){
+    string $prefix = "";
+    string $suffix = "";
+    string $cb_x = "";
+    string $axialX = "";
+    string $cb_y = "";
+    string $axialY = "";
+    string $cb_z = "";
+    string $axialZ = "";
+    string $loc_grp = "";
+    string $grp1 = "";
+    string $grp2 = "";
+    string $oft = "";
+    string $con = "";
+    string $jnt = `textFieldButtonGrp -q -tx "setjointBtnGrp"`;    
+    string $up_levels[] = `listRelatives -p $jnt`;
+    if(`text -q -l "maingrp_tx"` != "None"){       
+        string $main_grp = `text -q -l "maingrp_tx"`;
+        string $dn_levels[] = `listRelatives -c $main_grp`;
+        print $dn_levels;
+        for ($le in $dn_levels){
+            if(`gmatch $le "*_SlideLoc_Grp*"` == 1){
+                $loc_grp = $le;
+                parent $loc_grp $up_levels[0];
+                parentConstraint -mo -w 1 $jnt $loc_grp;
+                
+            }
+            if(size(`listRelatives -ad -typ "transform" $le`) > 0){
+                string $con_grp[] = `listRelatives -ad -typ "transform" $le`;
+                for ($g in $con_grp) {
+                    if(`gmatch $g "*Slide_Grp1*"` == 1){
+                        $grp1 = $g;
+                    }
+                    if(`gmatch $g "*Slide_Oft*"` == 1){
+                        $oft = $g;
+                    }
+                    if(`gmatch $g "*Slide_Grp2*"` == 1){
+                        $grp2 = $g;         
+                    }
+                    if(`gmatch $g "*Slide_Con*"` == 1){
+                        $con = $g;             
+                    }
+                }
+            }
+        }
+        parent -w $oft;   
+        string $loc_p[] = `parentConstraint -w 1 $jnt $grp1`;
+        delete $loc_p;
+        parent $oft $grp1;
+        pointConstraint -mo -w 1 $jnt $grp1;
+        string $oris[] = `orientConstraint -mo -w 1 $jnt $up_levels[0] $grp1`;
+        setAttr ($oris[0] + ".interpType") 2;
+        string $distance = `createNode "distanceBetween" -n ($prefix + $jnt + "disBetween" + $suffix)`;
+        connectAttr -f ($loc_grp + ".t") ($distance + ".point2");
+        float $dis_v = `getAttr ($distance + ".distance")`;
+        if(`checkBoxGrp -q -v1 "axialCBoxGrp"` == 1){
+            $cb_x = ".tx";
+            $axialX = "X";
+            conn_para($distance,$dis_v,$con,$grp2,$prefix,$suffix,$axialX,$cb_x);
+        }
+        if(`checkBoxGrp -q -v2 "axialCBoxGrp"` == 1){
+            $cb_y = ".ty";
+            $axialY = "Y";
+            conn_para($distance,$dis_v,$con,$grp2,$prefix,$suffix,$axialY,$cb_y);
+        }
+        if(`checkBoxGrp -q -v3 "axialCBoxGrp"` == 1){
+            $cb_z = ".tz";
+            $axialZ = "Z";
+            conn_para($distance,$dis_v,$con,$grp2,$prefix,$suffix,$axialZ,$cb_z);
+        }
+        string $slide_grp[] = `listRelatives -c -type "transform" $main_grp`;
+        if( size($slide_grp) ==1 ){
+            parent -w $slide_grp[0];
+            print $slide_grp[0];
+        }
+        parentConstraint -w 1 $up_levels[0] $main_grp;
+        parent $loc_grp $main_grp;
+        parent $slide_grp[0] $main_grp;
+        
+    }
+    else{
+        confirmDialog -t "注意" -m "没有设置组"
+            -icn "warning" -b "确认" -cb "确认" -ds "确认";
+    }
+}
+
+global proc conn_para(string $distance,float $dis_v,string $con,string $grp2,string $prefix,string $suffix,string $axial,string $cb){
+    string $jnt = `textFieldButtonGrp -q -tx "setjointBtnGrp"`;
+    string $multiNode1 = `createNode "multiplyDivide" -n ($prefix + $jnt + "multDivide1" + $suffix + $axial)`;
+    connectAttr -f ($distance + ".distance") ($multiNode1 + ".input1X");
+    setAttr ($multiNode1 + ".operation") 2;
+    setAttr ($multiNode1 + ".input2X") $dis_v;
+    string $re_node = `createNode "reverse" -n ($prefix + $jnt + "reverse" + $suffix + $axial) `;
+    connectAttr -f ($multiNode1 + ".outputX") ($re_node + ".inputX");
+    string $multiNode2 = `createNode "multiplyDivide" -n ($prefix + $jnt + "multDivide2" + $suffix + $axial)`;
+    connectAttr -f ($re_node + ".outputX") ($multiNode2 + ".input1X");
+    setAttr ($multiNode2 + ".input2X") -1;
+    string $cond_node = `createNode "condition" -n ($prefix + $jnt + "condition" + $suffix + $axial)`;
+    connectAttr -f ($re_node + ".outputX") ($cond_node + ".firstTerm");
+    connectAttr -f ($re_node + ".outputX") ($cond_node + ".colorIfFalseR");
+    connectAttr -f ($multiNode2 + ".outputX") ($cond_node + ".colorIfTrueR");
+    if(`checkBoxGrp -q -v4 "axialCBoxGrp"` == 1){
+        setAttr ($cond_node + ".operation") 2;
+    }
+    else{
+        setAttr ($cond_node + ".operation") 4;
+    }
+    string $multiNode3 = `createNode "multiplyDivide" -n ($prefix + $jnt + "multDivide3" + $suffix + $axial)`;
+    connectAttr -f ($cond_node + ".outColorR") ($multiNode3 + ".input1X");
+    connectAttr -f ($con + ".slide") ($multiNode3 + ".input2X");
+    string $plus_node = `createNode "plusMinusAverage" -n ($prefix + $jnt + "plusMinusAverage" + $suffix + $axial)`;
+    connectAttr -f ($multiNode3 + ".outputX")($plus_node + ".input1D[0]");
+    setAttr ($plus_node + ".input1D[1]") 0;
+    connectAttr -f ($plus_node + ".output1D")($grp2 + $cb);
+}
+
+helpjointWin();
